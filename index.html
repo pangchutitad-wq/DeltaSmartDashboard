@@ -13,9 +13,7 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--sans);}
-  #app{display:grid;grid-template-columns:440px 1fr;height:100vh;transition:grid-template-columns .15s ease;}
-  #app.no-sidebar{grid-template-columns:0 1fr;}
-  #app.no-sidebar #left{display:none;}
+  #app{display:grid;grid-template-columns:440px 1fr;height:100vh;}
   @media (max-width:960px){#app{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto;}}
 
   #left{background:var(--steel);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100vh;overflow-y:auto;}
@@ -1553,7 +1551,6 @@ function switchView(key){
   const v = VIEWS[key];
   v.el.style.display = v.display;
   v.tab.classList.add('active');
-  document.getElementById('app').classList.toggle('no-sidebar', key !== 'timestudy');
   v.onShow();
 }
 
