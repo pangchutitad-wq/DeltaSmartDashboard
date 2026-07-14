@@ -13,7 +13,9 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);font-family:var(--sans);}
-  #app{display:grid;grid-template-columns:440px 1fr;height:100vh;}
+  #app{display:grid;grid-template-columns:440px 1fr;height:100vh;transition:grid-template-columns .15s ease;}
+  #app.no-sidebar{grid-template-columns:0 1fr;}
+  #app.no-sidebar #left{display:none;}
   @media (max-width:960px){#app{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto;}}
 
   #left{background:var(--steel);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100vh;overflow-y:auto;}
@@ -32,6 +34,7 @@
     padding:8px 10px;border-radius:8px;font-size:13px;font-family:var(--sans);transition:border-color .15s, box-shadow .15s;
   }
   .field input:focus,.field select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px rgba(29,99,237,.12);}
+  .field input:disabled,.field select:disabled{opacity:.5;cursor:not-allowed;background:var(--steel);}
 
   .sectionLabel{
     padding:14px 20px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
@@ -298,7 +301,7 @@
       <p style="margin-top:6px;font-size:11px;color:var(--amber);font-weight:600;">⬤ Shared mode — everyone with this link sees and edits the same table.</p>
     </div>
 
-    <div class="sectionLabel">🏭 Station Info</div>
+    <div class="sectionLabel" id="stationSetupLabel">1️⃣ Station Setup</div>
     <div id="setup">
       <div class="field-row">
         <div class="field"><label>Factory</label>
@@ -323,9 +326,16 @@
         <div class="field"><label>Station</label><input id="f_station" placeholder="e.g. ST-04 Insertion"></div>
         <div class="field"><label>Cycle #</label><input id="f_cycle" type="number" min="1" value="1"></div>
       </div>
+      <button class="btn primary" id="confirmStationBtn" style="width:100%;margin-top:10px;">🔒 Confirm &amp; Start Timing</button>
     </div>
 
-    <div class="sectionLabel">🎬 Video</div>
+    <div id="stationSummary" style="display:none;margin:0 20px 14px;padding:10px 12px;background:var(--steel-2);border:1px solid var(--amber-dim);border-radius:8px;">
+      <div id="stationSummaryText" style="font-size:12.5px;font-weight:700;line-height:1.5;"></div>
+      <button class="ctrlBtn" id="changeStationBtn" style="margin-top:8px;">✎ Change station</button>
+    </div>
+
+    <div id="stationWorkStep" style="display:none;">
+    <div class="sectionLabel">2️⃣ Video</div>
     <div id="uploadzone">
       <div class="icon">📹</div>
       <div class="txt">Click or drop a station video</div>
@@ -353,7 +363,7 @@
       </div>
     </div>
 
-    <div class="sectionLabel">📋 Task Queue</div>
+    <div class="sectionLabel">3️⃣ Task Queue</div>
     <div id="taskQueueWrap">
       <div id="templateRow" style="display:flex;gap:6px;margin-bottom:4px;">
         <select id="templateSelect" style="flex:1;background:var(--ink);border:1px solid var(--line);color:var(--paper);padding:6px 8px;border-radius:6px;font-size:12px;">
@@ -372,6 +382,7 @@
 
     <div id="hintBox">
       <b>Workflow:</b> add your station's task list once (from the SOP), then step through the video — click <b>Mark Start</b> when a task begins, scrub/step forward, click <b>Mark End</b> when it finishes. It auto-advances to the next task. Use <span class="kbd">[</span> / <span class="kbd">]</span> to nudge 0.1s at a time, and slow the playback rate down to 0.1–0.25× for fast motions.
+    </div>
     </div>
   </div>
 
@@ -597,6 +608,36 @@ function wireAddableSelect(id){
 }
 wireAddableSelect('f_factory');
 wireAddableSelect('f_plant');
+
+// ---- Station Setup: confirm/change step ----
+const stationFieldIds = ['f_factory','f_plant','f_line','f_model','f_station','f_cycle'];
+document.getElementById('confirmStationBtn').addEventListener('click', ()=>{
+  const line = document.getElementById('f_line').value.trim();
+  const station = document.getElementById('f_station').value.trim();
+  if(!line || !station){ alert('At least Line and Station are required before you start timing.'); return; }
+
+  stationFieldIds.forEach(id=>{ document.getElementById(id).disabled = true; });
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('stationSetupLabel').style.display = 'none';
+
+  const factory = document.getElementById('f_factory').value;
+  const plant = document.getElementById('f_plant').value;
+  const model = document.getElementById('f_model').value.trim();
+  const cycle = document.getElementById('f_cycle').value;
+  document.getElementById('stationSummaryText').textContent =
+    `${factory} › ${plant} › ${line} › ${model||'—'} › ${station} · Cycle ${cycle}`;
+  document.getElementById('stationSummary').style.display = 'block';
+  document.getElementById('stationWorkStep').style.display = 'block';
+  renderPublishStatus();
+});
+
+document.getElementById('changeStationBtn').addEventListener('click', ()=>{
+  stationFieldIds.forEach(id=>{ document.getElementById(id).disabled = false; });
+  document.getElementById('setup').style.display = 'flex';
+  document.getElementById('stationSetupLabel').style.display = 'flex';
+  document.getElementById('stationSummary').style.display = 'none';
+  document.getElementById('stationWorkStep').style.display = 'none';
+});
 
 let rows = [];
 let rowIdCounter = 1;
@@ -1512,6 +1553,7 @@ function switchView(key){
   const v = VIEWS[key];
   v.el.style.display = v.display;
   v.tab.classList.add('active');
+  document.getElementById('app').classList.toggle('no-sidebar', key !== 'timestudy');
   v.onShow();
 }
 
