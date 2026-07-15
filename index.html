@@ -302,27 +302,38 @@
     <div class="sectionLabel" id="stationSetupLabel">1️⃣ Station Setup</div>
     <div id="setup">
       <div class="field-row">
-        <div class="field"><label>Factory</label>
-          <select id="f_factory">
-            <option value="Delta Electronics Thailand">Delta Electronics Thailand</option>
-            <option value="__add__">+ Add new…</option>
-          </select>
-        </div>
-        <div class="field"><label>Plant</label>
-          <select id="f_plant">
+        <div class="field"><label>Location</label>
+          <select id="f_location">
             <option value="Bangpoo">Bangpoo</option>
             <option value="Wellgrow">Wellgrow</option>
             <option value="__add__">+ Add new…</option>
           </select>
         </div>
+        <div class="field"><label>Plant</label>
+          <select id="f_plant">
+            <option value="BP3">BP3</option>
+            <option value="BP9">BP9</option>
+            <option value="__add__">+ Add new…</option>
+          </select>
+        </div>
       </div>
       <div class="field-row">
+        <div class="field"><label>Factory</label>
+          <select id="f_factory">
+            <option value="CDBU">CDBU</option>
+            <option value="IMBU">IMBU</option>
+            <option value="__add__">+ Add new…</option>
+          </select>
+        </div>
         <div class="field"><label>Line</label><input id="f_line" placeholder="e.g. CD7"></div>
-        <div class="field"><label>Model</label><input id="f_model" placeholder="e.g. PSU-450"></div>
       </div>
       <div class="field-row">
+        <div class="field"><label>Model</label><input id="f_model" placeholder="e.g. PSU-450"></div>
         <div class="field"><label>Station</label><input id="f_station" placeholder="e.g. ST-04 Insertion"></div>
+      </div>
+      <div class="field-row">
         <div class="field"><label>Cycle #</label><input id="f_cycle" type="number" min="1" value="1"></div>
+        <div class="field"></div>
       </div>
       <button class="btn primary" id="confirmStationBtn" style="width:100%;margin-top:10px;">🔒 Confirm &amp; Start Timing</button>
     </div>
@@ -473,8 +484,9 @@
           <span class="count" id="dashSubtitle">No data logged yet</span>
         </div>
         <div id="dashFilters">
-          <div class="field" style="width:150px;"><label>Factory</label><select id="dashFactorySelect"></select></div>
-          <div class="field" style="width:130px;"><label>Plant</label><select id="dashPlantSelect"></select></div>
+          <div class="field" style="width:130px;"><label>Location</label><select id="dashLocationSelect"></select></div>
+          <div class="field" style="width:120px;"><label>Plant</label><select id="dashPlantSelect"></select></div>
+          <div class="field" style="width:120px;"><label>Factory</label><select id="dashFactorySelect"></select></div>
           <div class="field" style="width:130px;"><label>Line</label><select id="dashLineSelect"></select></div>
           <div class="field" style="width:150px;"><label>Station</label><select id="dashStationSelect"></select></div>
           <div class="field" style="width:140px;"><label>Date</label><input id="dashDate" type="date"></div>
@@ -606,9 +618,10 @@ function wireAddableSelect(id){
 }
 wireAddableSelect('f_factory');
 wireAddableSelect('f_plant');
+wireAddableSelect('f_location');
 
 // ---- Station Setup: confirm/change step ----
-const stationFieldIds = ['f_factory','f_plant','f_line','f_model','f_station','f_cycle'];
+const stationFieldIds = ['f_location','f_plant','f_factory','f_line','f_model','f_station','f_cycle'];
 document.getElementById('confirmStationBtn').addEventListener('click', ()=>{
   const line = document.getElementById('f_line').value.trim();
   const station = document.getElementById('f_station').value.trim();
@@ -618,12 +631,13 @@ document.getElementById('confirmStationBtn').addEventListener('click', ()=>{
   document.getElementById('setup').style.display = 'none';
   document.getElementById('stationSetupLabel').style.display = 'none';
 
-  const factory = document.getElementById('f_factory').value;
+  const location = document.getElementById('f_location').value;
   const plant = document.getElementById('f_plant').value;
+  const factory = document.getElementById('f_factory').value;
   const model = document.getElementById('f_model').value.trim();
   const cycle = document.getElementById('f_cycle').value;
   document.getElementById('stationSummaryText').textContent =
-    `${factory} › ${plant} › ${line} › ${model||'—'} › ${station} · Cycle ${cycle}`;
+    `${location} › ${plant} › ${factory} › ${line} › ${model||'—'} › ${station} · Cycle ${cycle}`;
   document.getElementById('stationSummary').style.display = 'block';
   document.getElementById('stationWorkStep').style.display = 'block';
   renderPublishStatus();
@@ -885,6 +899,7 @@ function markEnd(id){
 function addRowFromQueueItem(q){
   rows.push({
     id: rowIdCounter++,
+    location: document.getElementById('f_location').value || '',
     factory: document.getElementById('f_factory').value || '',
     plant: document.getElementById('f_plant').value || '',
     line: document.getElementById('f_line').value || '',
@@ -918,7 +933,7 @@ function cell(value, onChange, opts={}){
   return td;
 }
 
-function groupKey(r){ return [r.factory,r.plant,r.line,r.model,r.station].join('|||'); }
+function groupKey(r){ return [r.location,r.factory,r.plant,r.line,r.model,r.station].join('|||'); }
 
 function renderTable(){
   cardsWrap.innerHTML = '';
@@ -927,7 +942,7 @@ function renderTable(){
   const groupOrder = [];
   rows.forEach(r=>{
     const key = groupKey(r);
-    if(!groups[key]){ groups[key] = { factory:r.factory, plant:r.plant, line:r.line, model:r.model, station:r.station, byCycle:{} }; groupOrder.push(key); }
+    if(!groups[key]){ groups[key] = { location:r.location, factory:r.factory, plant:r.plant, line:r.line, model:r.model, station:r.station, byCycle:{} }; groupOrder.push(key); }
     const cyc = r.cycle || 1;
     if(!groups[key].byCycle[cyc]) groups[key].byCycle[cyc] = [];
     groups[key].byCycle[cyc].push(r);
@@ -941,7 +956,7 @@ function renderTable(){
     // header — editable, applies to every row sharing this group key
     const head = document.createElement('div');
     head.className = 'cardHead';
-    const fields = [['factory','Factory'],['plant','Plant'],['line','Line'],['model','Model'],['station','Station']];
+    const fields = [['location','Location'],['plant','Plant'],['factory','Factory'],['line','Line'],['model','Model'],['station','Station']];
     fields.forEach(([prop,ph], i)=>{
       const inp = document.createElement('input');
       inp.value = g[prop] || '';
@@ -1081,6 +1096,7 @@ function durationOf(r){
 document.getElementById('addRowBtn').addEventListener('click', ()=>{
   rows.push({
     id: rowIdCounter++,
+    location: document.getElementById('f_location').value || '',
     factory: document.getElementById('f_factory').value || '',
     plant: document.getElementById('f_plant').value || '',
     line: document.getElementById('f_line').value || '',
@@ -1160,10 +1176,10 @@ function renderSummary(){
 }
 
 document.getElementById('exportBtn').addEventListener('click', ()=>{
-  const headers = ['Factory','Plant','Line','Model','Station','Cycle','#','Task','Category','Start(s)','End(s)','Duration(s)','Source'];
+  const headers = ['Location','Factory','Plant','Line','Model','Station','Cycle','#','Task','Category','Start(s)','End(s)','Duration(s)','Source'];
   const lines = [headers.join(',')];
   rows.forEach(r=>{
-    const vals = [r.factory,r.plant,r.line,r.model,r.station,r.cycle,r.order,r.name,catInfo(r.category).label,r.start,r.end,durationOf(r),r.source]
+    const vals = [r.location,r.factory,r.plant,r.line,r.model,r.station,r.cycle,r.order,r.name,catInfo(r.category).label,r.start,r.end,durationOf(r),r.source]
       .map(v=>`"${String(v??'').replace(/"/g,'""')}"`);
     lines.push(vals.join(','));
   });
@@ -1454,12 +1470,12 @@ function escapeHtml(s){
 }
 
 function exportRowsToCsv(rowSet, filename){
-  const headers = ['Factory','Plant','Line','Model','Station','Cycle','#','Task','Category','Start(s)','End(s)','Duration(s)','Source'];
+  const headers = ['Location','Factory','Plant','Line','Model','Station','Cycle','#','Task','Category','Start(s)','End(s)','Duration(s)','Source'];
   const lines = [headers.join(',')];
   rowSet.forEach(r=>{
     const s = parseFloat(r.start), e = parseFloat(r.end);
     const dur = (isFinite(s)&&isFinite(e)&&e>=s) ? (e-s).toFixed(2) : '—';
-    const vals = [r.factory,r.plant,r.line,r.model,r.station,r.cycle,r.order,r.name,catInfo(r.category).label,r.start,r.end,dur,r.source]
+    const vals = [r.location,r.factory,r.plant,r.line,r.model,r.station,r.cycle,r.order,r.name,catInfo(r.category).label,r.start,r.end,dur,r.source]
       .map(v=>`"${String(v??'').replace(/"/g,'""')}"`);
     lines.push(vals.join(','));
   });
@@ -1479,7 +1495,7 @@ document.getElementById('exportExcelBtn').addEventListener('click', ()=>{
     const s = parseFloat(r.start), e = parseFloat(r.end);
     const dur = (isFinite(s)&&isFinite(e)&&e>=s) ? +(e-s).toFixed(2) : '';
     return {
-      Factory:r.factory, Plant:r.plant, Line:r.line, Model:r.model, Station:r.station,
+      Location:r.location, Factory:r.factory, Plant:r.plant, Line:r.line, Model:r.model, Station:r.station,
       Cycle:r.cycle, '#':r.order, Task:r.name, Category:catInfo(r.category).label,
       'Start(s)':r.start, 'End(s)':r.end, 'Duration(s)':dur, Source:r.source
     };
@@ -1583,6 +1599,7 @@ function populateDashboardSelectors(){
   const lines = [...new Set(publishedRows.map(r=>r.line).filter(Boolean))];
   const factories = [...new Set(publishedRows.map(r=>r.factory).filter(Boolean))];
   const plants = [...new Set(publishedRows.map(r=>r.plant).filter(Boolean))];
+  const locations = [...new Set(publishedRows.map(r=>r.location).filter(Boolean))];
 
   function fillSelect(id, values, allLabel){
     const sel = document.getElementById(id);
@@ -1590,6 +1607,7 @@ function populateDashboardSelectors(){
     sel.innerHTML = `<option value="">${allLabel}</option>` + values.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
     if(values.includes(prev)) sel.value = prev;
   }
+  fillSelect('dashLocationSelect', locations, 'All locations');
   fillSelect('dashFactorySelect', factories, 'All factories');
   fillSelect('dashPlantSelect', plants, 'All plants');
   fillSelect('dashLineSelect', lines, 'All lines');
@@ -1610,6 +1628,7 @@ function populateDashboardSelectors(){
   if(!dateInput.value) dateInput.value = new Date().toISOString().slice(0,10);
 }
 
+document.getElementById('dashLocationSelect').addEventListener('change', renderDashboard);
 document.getElementById('dashFactorySelect').addEventListener('change', renderDashboard);
 document.getElementById('dashPlantSelect').addEventListener('change', renderDashboard);
 document.getElementById('dashLineSelect').addEventListener('change', renderDashboard);
@@ -1687,7 +1706,7 @@ async function handleScan(station){
     const unitNumber = scanCountFor(scanChain.lastStation) + 1;
     shiftLogs.push({
       id: shiftLogIdCounter++, type:'cycle', timestamp: new Date(now).toISOString(),
-      station: scanChain.lastStation, line: stRow?.line||'', plant: stRow?.plant||'', factory: stRow?.factory||'',
+      station: scanChain.lastStation, location: stRow?.location||'', line: stRow?.line||'', plant: stRow?.plant||'', factory: stRow?.factory||'',
       cycleSeconds: +elapsedSec.toFixed(2), unitNumber, source:'barcode-sim'
     });
     await saveShiftLogs();
@@ -1743,7 +1762,7 @@ document.getElementById('logDtBtn').addEventListener('click', async ()=>{
   const stRow = publishedRows.find(r=>r.station===station);
   shiftLogs.push({
     id: shiftLogIdCounter++, type:'downtime', timestamp: new Date().toISOString(),
-    station, line: stRow?.line||'', plant: stRow?.plant||'', factory: stRow?.factory||'',
+    station, location: stRow?.location||'', line: stRow?.line||'', plant: stRow?.plant||'', factory: stRow?.factory||'',
     durationMinutes: duration, reasonCategory: reason, notes
   });
   await saveShiftLogs();
@@ -1803,6 +1822,7 @@ let downtimeParetoChart = null;
 
 function renderDashboard(){
   populateDashboardSelectors();
+  const locationFilter = document.getElementById('dashLocationSelect').value;
   const factoryFilter = document.getElementById('dashFactorySelect').value;
   const plantFilter = document.getElementById('dashPlantSelect').value;
   const lineFilter = document.getElementById('dashLineSelect').value;
@@ -1810,6 +1830,7 @@ function renderDashboard(){
   const dateFilter = document.getElementById('dashDate').value;
 
   const logsForDay = shiftLogs.filter(l=>{
+    if(locationFilter && l.location !== locationFilter) return false;
     if(factoryFilter && l.factory !== factoryFilter) return false;
     if(plantFilter && l.plant !== plantFilter) return false;
     if(lineFilter && l.line !== lineFilter) return false;
@@ -1820,7 +1841,7 @@ function renderDashboard(){
   const prodLogs = logsForDay.filter(l=>l.type==='production');
   const dtLogs = logsForDay.filter(l=>l.type==='downtime');
 
-  const scopeLabel = [factoryFilter,plantFilter,lineFilter,stationFilter].filter(Boolean).join(' › ') || 'All lines';
+  const scopeLabel = [locationFilter,factoryFilter,plantFilter,lineFilter,stationFilter].filter(Boolean).join(' › ') || 'All lines';
   document.getElementById('dashSubtitle').textContent =
     `${scopeLabel} · ${dateFilter} · ${prodLogs.length} production log${prodLogs.length===1?'':'s'}, ${dtLogs.length} downtime log${dtLogs.length===1?'':'s'}`;
 
@@ -2121,7 +2142,7 @@ async function commitStatus(station, status, reasonCategory, notes){
   const stRow = publishedRows.find(r=>r.station===station);
   shiftLogs.push({
     id: shiftLogIdCounter++, type:'status', timestamp: new Date().toISOString(),
-    station, line: stRow?.line||'', plant: stRow?.plant||'', factory: stRow?.factory||'',
+    station, location: stRow?.location||'', line: stRow?.line||'', plant: stRow?.plant||'', factory: stRow?.factory||'',
     status, reasonCategory, notes
   });
   await saveShiftLogs();
