@@ -192,7 +192,11 @@
   #lbSummaryTable th{text-align:left;color:var(--paper-dim);font-family:var(--mono);font-size:10.5px;text-transform:uppercase;border-bottom:1px solid var(--line);}
   #lbSummaryTable td{border-bottom:1px solid var(--line);font-family:var(--mono);}
 
-  #viewTabs{display:flex;gap:6px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--steel);}
+  #viewTabs{display:flex;gap:6px;padding:14px 24px 0;border-bottom:none;background:var(--steel);}
+  #viewSubtitle{
+    padding:0 24px 12px;border-bottom:1px solid var(--line);background:var(--steel);
+    font-size:12px;color:var(--paper-dim);line-height:1.5;
+  }
   .viewTab{
     display:flex;align-items:center;gap:7px;background:none;border:1px solid transparent;
     padding:9px 16px;font-size:13px;font-weight:700;color:var(--paper-dim);
@@ -221,6 +225,13 @@
   .kpiCard.good .kv{color:var(--green);}
 
   .dashSection{padding:18px 24px;border-top:1px solid var(--line);}
+  .dashDetails{padding:18px 24px;border-top:1px solid var(--line);}
+  .dashDetails summary{cursor:pointer;list-style:none;user-select:none;}
+  .dashDetails summary::-webkit-details-marker{display:none;}
+  .dashDetails summary h3{display:inline-flex;align-items:center;gap:6px;margin:0;}
+  .dashDetails summary h3::before{content:'▸';font-size:11px;color:var(--paper-dim);transition:transform .15s;}
+  .dashDetails[open] summary h3::before{transform:rotate(90deg);}
+  .dashDetails > *:not(summary){margin-top:12px;}
   .dashSection h3{margin:0 0 12px;font-size:14px;font-weight:700;}
   #shiftLogForms{display:flex;flex-direction:column;gap:16px;}
   .logForm{background:var(--steel);border:1px solid var(--line);border-radius:10px;padding:14px;}
@@ -397,11 +408,12 @@
 
   <div id="right">
     <div id="viewTabs">
+      <button class="viewTab active" id="tabTimeStudy"><span class="tabIcon">⏱️</span>1. Timing Tool</button>
+      <button class="viewTab" id="tabDashboard"><span class="tabIcon">📊</span>2. Dashboard</button>
+      <button class="viewTab" id="tabLineView"><span class="tabIcon">🚦</span>3. Line View</button>
       <button class="viewTab" id="tabAskAI"><span class="tabIcon">💬</span>Ask AI</button>
-      <button class="viewTab" id="tabDashboard"><span class="tabIcon">📊</span>Dashboard</button>
-      <button class="viewTab active" id="tabTimeStudy"><span class="tabIcon">⏱️</span>Timing Tool</button>
-      <button class="viewTab" id="tabLineView"><span class="tabIcon">🚦</span>Line View</button>
     </div>
+    <div id="viewSubtitle"></div>
 
     <div id="timeStudyView">
     <div id="tableHeader">
@@ -505,8 +517,8 @@
         <div style="position:relative;height:280px;"><canvas id="downtimeParetoCanvas"></canvas></div>
       </div>
 
-      <div class="dashSection">
-        <h3>Log Shift Data</h3>
+      <details class="dashDetails" open>
+        <summary><h3>Log Shift Data</h3></summary>
         <p style="font-size:11.5px;color:var(--paper-dim);max-width:800px;line-height:1.5;margin:0 0 12px;">
           Production is tracked by simulating a barcode scan at each station — the hardware version of this isn't installed yet, so pressing a station's button here stands in for a real scanner. Downtime events are still logged manually below, since that needs a cause.
         </p>
@@ -534,12 +546,12 @@
             <button class="btn primary" id="logDtBtn" style="width:100%;margin-top:8px;">+ Log Downtime</button>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div class="dashSection">
-        <h3>Recent Log Entries</h3>
+      <details class="dashDetails">
+        <summary><h3>Recent Log Entries</h3></summary>
         <div id="shiftLogList"></div>
-      </div>
+      </details>
     </div>
 
     <div id="aiChatView" style="display:none;overflow-y:auto;height:100%;flex-direction:column;">
@@ -1556,10 +1568,14 @@ const tabAskAI = document.getElementById('tabAskAI');
 const tabLineView = document.getElementById('tabLineView');
 
 const VIEWS = {
-  askai: { el: aiChatView, tab: tabAskAI, display: 'flex', onShow: ()=>{} },
-  dashboard: { el: dashboardView, tab: tabDashboard, display: 'block', onShow: ()=>{ populateDashboardSelectors(); renderDashboard(); renderScannerPanel(); } },
-  timestudy: { el: timeStudyView, tab: tabTimeStudy, display: 'block', onShow: ()=>{} },
-  lineview: { el: lineView, tab: tabLineView, display: 'block', onShow: ()=>{ renderLineView(); } },
+  timestudy: { el: timeStudyView, tab: tabTimeStudy, display: 'block', onShow: ()=>{},
+    subtitle: '<b>Build here first.</b> Time a station from video (or type it in manually), then click "💾 Save / Publish to Dashboard" when it\'s ready — nothing shows up in Dashboard or Line View until you publish.' },
+  dashboard: { el: dashboardView, tab: tabDashboard, display: 'block', onShow: ()=>{ populateDashboardSelectors(); renderDashboard(); renderScannerPanel(); },
+    subtitle: 'Live KPIs (OEE, UPH, Achievement Rate…) for whatever you\'ve <b>published</b> from the Timing Tool. Log production/downtime below to feed the numbers.' },
+  lineview: { el: lineView, tab: tabLineView, display: 'block', onShow: ()=>{ renderLineView(); },
+    subtitle: 'Andon-style board — green/yellow/red per <b>published</b> station. Tap a color to set status; click a card for details.' },
+  askai: { el: aiChatView, tab: tabAskAI, display: 'flex', onShow: ()=>{},
+    subtitle: 'Quick shortcut to ask about your published data — "which station has the most downtime today?" — or anything else.' },
 };
 
 function switchView(key){
@@ -1567,6 +1583,7 @@ function switchView(key){
   const v = VIEWS[key];
   v.el.style.display = v.display;
   v.tab.classList.add('active');
+  document.getElementById('viewSubtitle').innerHTML = v.subtitle;
   v.onShow();
 }
 
@@ -2169,6 +2186,7 @@ function showStationDetail(station, type, latest){
 }
 
 renderTable();
+switchView('timestudy');
 </script>
 </body>
 </html>
